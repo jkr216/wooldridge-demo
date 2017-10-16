@@ -1,0 +1,85 @@
+---
+title: "New Wooldridge Package!"
+output: html_notebook
+---
+
+```{r setup}
+knitr::opts_chunk$set(message=FALSE, warning=FALSE)
+install.packages("tidyverse")
+install.packages("wooldridge")
+
+library(tidyverse)
+library(wooldridge)
+```
+
+Attention econ students, professors and aficianados - an awesome new R package has arrived for the fall semester. It's called `wooldridge` and as you might expect, it's a companion R package to the ~~Bible of econometrics~~ popular Wooldridge text used in lots of econometrics classes. Thanks to [@justinmshea](https://www.linkedin.com/in/justinmshea/) for building and contributing to CRAN!
+
+The [vignette](https://cran.r-project.org/web/packages/wooldridge/vignettes/wooldridge-vignette.pdf) has a nice summary and worked example from every chapter of the book - here's an excerpt:  
+
+> This vignette contains examples from every chapter of *Introductory Econometrics: A Modern Approach* by Jeffrey M. Wooldridge. Each example illustrates how to load data, build econometric models, and compute estimates with R. Economics students new to both econometrics and R may find the introduction to both a bit challenging. In particular, the process of loading and preparing data prior to building one’s first econometric model can present challenges. The wooldridge data package aims to lighten this task. 
+
+Honestly, the best thing to do is head straight to the vignette but below is a quick worked example from Chapter 10 on time series. 
+
+```{r}
+# Load up the data for Chapter 10, example 10.2 and take a look at the summary
+data("intdef")
+summary(intdef)
+```
+
+Now let's run example 10.2 and examine the effects of inflation and deficits on interest rates.
+
+The variable *i3* is the three-month Treasury-bill rate, *inf* is the annual inflation rate based on the consumer price index (CPI), and *def* is the federal budget deficit as a percentage of GDP. The  equation to be estimated is is:
+
+$$\hat{i3_{t}}=\beta_0 + \beta_1inf_{t} + \beta_2def_{t}  + e$$
+We will run the same regression as the book and the vignette. The only wrinkle is that we will use the `broom` package to the clean up the results and visualize predicted values.
+
+```{r}
+# Run regression
+tbill_model <- lm(i3 ~ inf + def, data = intdef)
+
+# tidy the results
+tidy(tbill_model)
+```
+
+We can `glance` at our results, and use dplyr's `select` verb to choose a handful of columns for viewing. 
+
+```{r}
+glance(tbill_model) %>% 
+  select( r.squared, adj.r.squared, sigma)
+```
+
+
+Let's round out our use of `broom` and tinker with the `augment` function, which will augment our original data set with fitted/predicted values and residuals from the model.
+
+```{r}
+intdef_augmented <- augment(tbill_model, intdef)
+
+head(intdef_augmented)
+```
+
+Now we can visualize the predicted or `.fitted` versus actual *i3* values. 
+
+```{r}
+intdef_augmented %>% 
+  ggplot(aes(x = year)) + 
+  geom_line(aes(y = i3, color = "i3")) +
+  geom_line(aes(y = .fitted, color = "predicted"))
+
+```
+
+
+Let's add in our predictors as well and see if anything jumps out as interesting. 
+
+```{r}
+intdef_augmented %>% 
+  ggplot(aes(x = year)) + 
+  geom_line(aes(y = i3, color = "i3")) +
+  geom_line(aes(y = .fitted, color = "predicted")) +
+  geom_line(aes(y = inf, color = "inflation")) +
+  geom_line(aes(y = def, color = "deficit"))
+```
+
+
+Since 2000, interest rates have been heading in one direction, while the deficit as percent of GDP has been increasing. Remember that our model returned a positive beta for the `def` variable: an increasing deficit should lead to increasing interest rates. This might explain why the predictions are way off after 2000.
+
+That's all for today. Thanks again to [justinmshea](https://www.linkedin.com/in/justinmshea/) for the new fantastically useful [wooldridge](https://cran.r-project.org/web/packages/wooldridge/wooldridge.pdf) package. Happy econometricsing! 
